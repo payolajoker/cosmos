@@ -10,6 +10,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     #addedBlocks li button { margin-left: 10px; }
+    .inline-input { width: 60px; margin-left: 10px; }
+    .copy-area { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -40,7 +42,7 @@
   <button onclick="resetTotal()">초기화</button>
 
   <h3>현재 선택 블록 필요 자원</h3>
-  <table id="currentBlockTable" style="display:none;">
+  <table id="currentBlockTable" style="display:none; width: 100%;">
     <thead>
       <tr><th>컴포넌트</th><th>수량</th></tr>
     </thead>
@@ -51,12 +53,17 @@
   <ul id="addedBlocks"></ul>
 
   <h2>누적 필요 자원</h2>
-  <table id="resultTable" style="display:none;">
+  <table id="resultTable" style="display:none; width: 100%;">
     <thead>
       <tr><th>컴포넌트</th><th>총 수량</th></tr>
     </thead>
     <tbody></tbody>
   </table>
+
+  <div class="copy-area">
+    <button onclick="copyTotalToClipboard()">📋 누적 자원 복사</button>
+    <textarea id="copyArea" style="width:100%;height:100px;display:none;"></textarea>
+  </div>
 
   <script>
     let blockData = [];
@@ -131,15 +138,22 @@
       const selected = document.getElementById('blockSelect').value;
       const count = parseInt(document.getElementById('blockCount').value);
       const [displayName, cubeSize] = selected.split('||');
+      const nameKey = `${displayName} (${cubeSize})`;
       const block = blockData.find(b => b.DisplayName === displayName && b.CubeSize === cubeSize);
       if (!block) return;
+
+      const existing = addedBlockSummary.find(b => b.name === nameKey);
+      if (existing) {
+        existing.count += count;
+      } else {
+        addedBlockSummary.push({ name: nameKey, count });
+      }
 
       block.Components.forEach(comp => {
         if (!totalComponents[comp.ComponentType]) totalComponents[comp.ComponentType] = 0;
         totalComponents[comp.ComponentType] += comp.ComponentCount * count;
       });
 
-      addedBlockSummary.push({ name: `${block.DisplayName} (${block.CubeSize})`, count });
       renderTable();
       renderAddedList();
     }
@@ -157,6 +171,28 @@
       });
 
       addedBlockSummary.splice(index, 1);
+      renderTable();
+      renderAddedList();
+    }
+
+    function updateBlockCount(index, newCount) {
+      const item = addedBlockSummary[index];
+      const [displayName, cubeSize] = item.name.split(' (');
+      const oldCount = item.count;
+      const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
+      if (!block) return;
+
+      // 조정 전 자원 차감
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] -= comp.ComponentCount * oldCount;
+      });
+
+      // 조정 후 자원 추가
+      item.count = newCount;
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] += comp.ComponentCount * newCount;
+      });
+
       renderTable();
       renderAddedList();
     }
@@ -194,13 +230,25 @@
       ul.innerHTML = '';
       addedBlockSummary.forEach((item, index) => {
         const li = document.createElement('li');
-        li.textContent = `${item.name} × ${item.count}`;
+        li.innerHTML = `${item.name} × <input class="inline-input" type="number" min="1" value="${item.count}" onchange="updateBlockCount(${index}, parseInt(this.value))">`;
         const btn = document.createElement('button');
         btn.textContent = '삭제';
         btn.onclick = () => removeBlock(index);
         li.appendChild(btn);
         ul.appendChild(li);
       });
+    }
+
+    function copyTotalToClipboard() {
+      const text = Object.entries(totalComponents)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join('\n');
+      const area = document.getElementById('copyArea');
+      area.value = text;
+      area.style.display = 'block';
+      area.select();
+      document.execCommand('copy');
+      alert('누적 자원 정보가 복사되었습니다.');
     }
   </script>
 </body>
