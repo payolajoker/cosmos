@@ -48,12 +48,6 @@
       vertical-align: middle;
       margin-right: 5px;
     }
-    .block-icon-img {
-      width: 48px;
-      height: 48px;
-      vertical-align: middle;
-      margin-right: 8px;
-    }
     textarea {
       background-color: #111;
       color: #fff;
@@ -89,7 +83,6 @@
   <button onclick="resetTotal()">초기화</button>
 
   <h3>현재 선택 블록 필요 자원</h3>
-  <div id="currentBlockInfo"></div>
   <table id="currentBlockTable" style="display:none;">
     <thead>
       <tr><th>컴포넌트</th><th>수량</th></tr>
@@ -118,7 +111,7 @@
     let totalComponents = {};
     let addedBlockSummary = [];
 
-    fetch('space_engineers_blocks_with_true_icons_final.json')
+    fetch('space_engineers_blocks_with_true_icons.json')
       .then(res => res.json())
       .then(data => {
         blockData = data;
@@ -170,40 +163,141 @@
       const table = document.getElementById('currentBlockTable');
       const tbody = table.querySelector('tbody');
       tbody.innerHTML = '';
-      const infoDiv = document.getElementById('currentBlockInfo');
-      infoDiv.innerHTML = '';
       if (!block) {
         table.style.display = 'none';
         return;
       }
-
-      const iconHtml = block.Icon ? `<img src="${block.Icon}" class="block-icon-img">` : '';
-      infoDiv.innerHTML = `${iconHtml}<strong>${block.DisplayName}</strong>`;
-
       block.Components.forEach(comp => {
         const row = document.createElement('tr');
-        const compIconHtml = comp.Icon ? `<img src="${comp.Icon}" class="icon-img">` : '';
-        row.innerHTML = `<td>${compIconHtml}${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
+        const iconHtml = comp.Icon ? `<img src="${comp.Icon}" class="icon-img">` : '';
+        row.innerHTML = `<td>${iconHtml}${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
         tbody.appendChild(row);
       });
       table.style.display = 'table';
+    }
+
+    function addToTotal() {
+      const selected = document.getElementById('blockSelect').value;
+      const count = parseInt(document.getElementById('blockCount').value);
+      const [displayName, cubeSize] = selected.split('||');
+      const nameKey = `${displayName} (${cubeSize})`;
+      const block = blockData.find(b => b.DisplayName === displayName && b.CubeSize === cubeSize);
+      if (!block) return;
+
+      const existing = addedBlockSummary.find(b => b.name === nameKey);
+      if (existing) {
+        existing.count += count;
+      } else {
+        addedBlockSummary.push({ name: nameKey, count });
+      }
+
+      block.Components.forEach(comp => {
+        if (!totalComponents[comp.ComponentType]) totalComponents[comp.ComponentType] = 0;
+        totalComponents[comp.ComponentType] += comp.ComponentCount * count;
+      });
+
+      renderTable();
+      renderAddedList();
+    }
+
+    function removeBlock(index) {
+      const item = addedBlockSummary[index];
+      const [displayName, cubeSize] = item.name.split(' (');
+      const count = item.count;
+      const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
+      if (!block) return;
+
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] -= comp.ComponentCount * count;
+        if (totalComponents[comp.ComponentType] <= 0) delete totalComponents[comp.ComponentType];
+      });
+
+      addedBlockSummary.splice(index, 1);
+      renderTable();
+      renderAddedList();
+    }
+
+    function updateBlockCount(index, newCount) {
+      const item = addedBlockSummary[index];
+      const [displayName, cubeSize] = item.name.split(' (');
+      const oldCount = item.count;
+      const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
+      if (!block) return;
+
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] -= comp.ComponentCount * oldCount;
+      });
+
+      item.count = newCount;
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] += comp.ComponentCount * newCount;
+      });
+
+      renderTable();
+      renderAddedList();
+    }
+
+    function resetTotal() {
+      totalComponents = {};
+      addedBlockSummary = [];
+      renderTable();
+      renderAddedList();
+      renderCurrentBlockDetails();
+      const area = document.getElementById('copyArea');
+      area.value = '';
+      area.style.display = 'none';
+    }
+
+    function renderTable() {
+      const resultTable = document.getElementById('resultTable');
+      const tbody = resultTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      const keys = Object.keys(totalComponents);
+      if (keys.length === 0) {
+        resultTable.style.display = 'none';
+        return;
+      }
+      keys.sort().forEach(type => {
+        const comp = blockData.flatMap(b => b.Components).find(c => c.ComponentType === type);
+        const icon = comp?.Icon || '';
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${icon ? `<img src="${icon}" class="icon-img">` : ''}${type}</td><td>${totalComponents[type]}</td>`;
+        tbody.appendChild(row);
+      });
+      resultTable.style.display = 'table';
     }
 
     function renderAddedList() {
       const ul = document.getElementById('addedBlocks');
       ul.innerHTML = '';
       addedBlockSummary.forEach((item, index) => {
-        const [displayName, cubeSize] = item.name.split(' (');
-        const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
-        const iconHtml = block && block.Icon ? `<img src="${block.Icon}" class="block-icon-img">` : '';
         const li = document.createElement('li');
-        li.innerHTML = `${iconHtml}${item.name} × <input class="inline-input" type="number" min="1" value="${item.count}" onchange="updateBlockCount(${index}, parseInt(this.value))">`;
+        li.innerHTML = `${item.name} × <input class="inline-input" type="number" min="1" value="${item.count}" onchange="updateBlockCount(${index}, parseInt(this.value))">`;
         const btn = document.createElement('button');
         btn.textContent = '삭제';
         btn.onclick = () => removeBlock(index);
         li.appendChild(btn);
         ul.appendChild(li);
       });
+    }
+
+    function copyTotalToClipboard() {
+      const blockList = addedBlockSummary
+        .map(item => `${item.name} × ${item.count}`)
+        .join('\n');
+
+      const componentList = Object.entries(totalComponents)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join('\n');
+
+      const result = `${blockList}\n${componentList}`;
+
+      const area = document.getElementById('copyArea');
+      area.value = result;
+      area.style.display = 'block';
+      area.select();
+      document.execCommand('copy');
+      alert('누적 자원 정보와 블록 목록이 복사되었습니다.');
     }
   </script>
 </body>
