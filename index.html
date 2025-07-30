@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>스페이스 엔지니어스 제작 계산기</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { font-size: 24px; }
+    select, input, button { margin: 5px 0; padding: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>스페이스 엔지니어스 제작 계산기</h1>
+
+  <label for="groupSelect">블록 그룹 선택:</label>
+  <select id="groupSelect">
+    <option value="">전체</option>
+  </select>
+
+  <label for="blockSelect">블록 선택:</label>
+  <select id="blockSelect"></select>
+
+  <label for="blockCount">블록 수량:</label>
+  <input type="number" id="blockCount" value="1" min="1">
+
+  <button onclick="addToTotal()">추가</button>
+  <button onclick="resetTotal()">초기화</button>
+
+  <h2>누적 필요 자원</h2>
+  <table id="resultTable" style="display:none;">
+    <thead>
+      <tr><th>컴포넌트</th><th>총 수량</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let blockData = [];
+    let totalComponents = {};
+
+    fetch('space_engineers_blocks_structured_with_groups.json')
+      .then(res => res.json())
+      .then(data => {
+        blockData = data;
+        const select = document.getElementById('blockSelect');
+        const groupSelect = document.getElementById('groupSelect');
+
+        const groups = new Set();
+        data.forEach(block => {
+          const groupKey = block.TagGroup || block.VariantGroup || '기타';
+          groups.add(groupKey);
+        });
+        [...groups].sort().forEach(group => {
+          const opt = document.createElement('option');
+          opt.value = group;
+          opt.textContent = group;
+          groupSelect.appendChild(opt);
+        });
+
+        groupSelect.addEventListener('change', updateBlockOptions);
+        updateBlockOptions();
+      });
+
+    function updateBlockOptions() {
+      const group = document.getElementById('groupSelect').value;
+      const blockSelect = document.getElementById('blockSelect');
+      blockSelect.innerHTML = '';
+      const filtered = blockData.filter(b => !group || b.TagGroup === group || b.VariantGroup === group);
+      filtered.forEach(block => {
+        const option = document.createElement('option');
+        option.value = block.DisplayName;
+        option.textContent = `${block.DisplayName} (${block.CubeSize})`;
+        blockSelect.appendChild(option);
+      });
+    }
+
+    function addToTotal() {
+      const name = document.getElementById('blockSelect').value;
+      const count = parseInt(document.getElementById('blockCount').value);
+      const block = blockData.find(b => b.DisplayName === name);
+      if (!block) return;
+
+      block.Components.forEach(comp => {
+        if (!totalComponents[comp.ComponentType]) totalComponents[comp.ComponentType] = 0;
+        totalComponents[comp.ComponentType] += comp.ComponentCount * count;
+      });
+
+      renderTable();
+    }
+
+    function resetTotal() {
+      totalComponents = {};
+      renderTable();
+    }
+
+    function renderTable() {
+      const resultTable = document.getElementById('resultTable');
+      const tbody = resultTable.querySelector('tbody');
+      tbody.innerHTML = '';
+
+      const keys = Object.keys(totalComponents);
+      if (keys.length === 0) {
+        resultTable.style.display = 'none';
+        return;
+      }
+
+      keys.sort().forEach(type => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${type}</td><td>${totalComponents[type]}</td>`;
+        tbody.appendChild(row);
+      });
+
+      resultTable.style.display = 'table';
+    }
+  </script>
+</body>
+</html>
