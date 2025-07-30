@@ -4,17 +4,55 @@
   <meta charset="UTF-8">
   <title>스페이스 엔지니어스 제작 계산기</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #000;
+      color: #fff;
+    }
     h1 { font-size: 24px; }
-    select, input, button { margin: 5px 5px 5px 0; padding: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
+    select, input, button {
+      margin: 5px 5px 5px 0;
+      padding: 8px;
+      background-color: #222;
+      color: #fff;
+      border: 1px solid #555;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      table-layout: fixed;
+    }
     th:nth-child(1), td:nth-child(1) { width: 60%; }
     th:nth-child(2), td:nth-child(2) { width: 40%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      background-color: #111;
+      color: #fff;
+    }
     #addedBlocks li button { margin-left: 10px; }
-    .inline-input { width: 60px; margin-left: 10px; }
+    .inline-input {
+      width: 60px;
+      margin-left: 10px;
+      background-color: #222;
+      color: #fff;
+      border: 1px solid #555;
+    }
     .copy-area { margin-top: 10px; }
-    .icon-img { width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; }
+    .icon-img {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    textarea {
+      background-color: #111;
+      color: #fff;
+      border: 1px solid #555;
+    }
   </style>
 </head>
 <body>
@@ -117,10 +155,6 @@
       renderCurrentBlockDetails();
     }
 
-    function getIconImgTag(iconPath) {
-      return iconPath ? `<img src="${iconPath}" class="icon-img">` : '';
-    }
-
     function renderCurrentBlockDetails() {
       const selected = document.getElementById('blockSelect').value;
       const count = parseInt(document.getElementById('blockCount').value);
@@ -135,7 +169,8 @@
       }
       block.Components.forEach(comp => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${getIconImgTag(comp.Icon)}${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
+        const iconHtml = comp.Icon ? `<img src="${comp.Icon}" class="icon-img">` : '';
+        row.innerHTML = `<td>${iconHtml}${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
         tbody.appendChild(row);
       });
       table.style.display = 'table';
@@ -217,21 +252,18 @@
       const resultTable = document.getElementById('resultTable');
       const tbody = resultTable.querySelector('tbody');
       tbody.innerHTML = '';
-
       const keys = Object.keys(totalComponents);
       if (keys.length === 0) {
         resultTable.style.display = 'none';
         return;
       }
-
       keys.sort().forEach(type => {
         const comp = blockData.flatMap(b => b.Components).find(c => c.ComponentType === type);
         const icon = comp?.Icon || '';
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${getIconImgTag(icon)}${type}</td><td>${totalComponents[type]}</td>`;
+        row.innerHTML = `<td>${icon ? `<img src="${icon}" class="icon-img">` : ''}${type}</td><td>${totalComponents[type]}</td>`;
         tbody.appendChild(row);
       });
-
       resultTable.style.display = 'table';
     }
 
