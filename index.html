@@ -6,18 +6,29 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     h1 { font-size: 24px; }
-    select, input, button { margin: 5px 0; padding: 8px; }
+    select, input, button { margin: 5px 5px 5px 0; padding: 8px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    #addedBlocks li button { margin-left: 10px; }
   </style>
 </head>
 <body>
   <h1>스페이스 엔지니어스 제작 계산기</h1>
 
+  <label for="gridSelect">그리드 크기 선택:</label>
+  <select id="gridSelect">
+    <option value="">전체</option>
+    <option value="Large Grid">라지 그리드</option>
+    <option value="Small Grid">스몰 그리드</option>
+  </select>
+
   <label for="groupSelect">블록 그룹 선택:</label>
   <select id="groupSelect">
     <option value="">전체</option>
   </select>
+
+  <label for="blockSearch">블록 검색:</label>
+  <input type="text" id="blockSearch" placeholder="블록 이름...">
 
   <label for="blockSelect">블록 선택:</label>
   <select id="blockSelect"></select>
@@ -49,7 +60,6 @@
       .then(data => {
         blockData = data;
         const groupSelect = document.getElementById('groupSelect');
-
         const groups = new Set();
         data.forEach(block => {
           const groupKey = block.TagGroup || block.VariantGroup || '기타';
@@ -62,15 +72,24 @@
           groupSelect.appendChild(opt);
         });
 
-        groupSelect.addEventListener('change', updateBlockOptions);
+        document.getElementById('groupSelect').addEventListener('change', updateBlockOptions);
+        document.getElementById('gridSelect').addEventListener('change', updateBlockOptions);
+        document.getElementById('blockSearch').addEventListener('input', updateBlockOptions);
+
         updateBlockOptions();
       });
 
     function updateBlockOptions() {
       const group = document.getElementById('groupSelect').value;
+      const grid = document.getElementById('gridSelect').value;
+      const search = document.getElementById('blockSearch').value.toLowerCase();
       const blockSelect = document.getElementById('blockSelect');
       blockSelect.innerHTML = '';
-      const filtered = blockData.filter(b => !group || b.TagGroup === group || b.VariantGroup === group);
+      const filtered = blockData.filter(b =>
+        (!group || b.TagGroup === group || b.VariantGroup === group) &&
+        (!grid || b.CubeSize === grid) &&
+        (!search || b.DisplayName.toLowerCase().includes(search))
+      );
       filtered.forEach(block => {
         const option = document.createElement('option');
         option.value = block.DisplayName + '||' + block.CubeSize;
@@ -91,7 +110,24 @@
         totalComponents[comp.ComponentType] += comp.ComponentCount * count;
       });
 
-      addedBlockSummary.push(`${block.DisplayName} (${block.CubeSize}) × ${count}`);
+      addedBlockSummary.push({ name: `${block.DisplayName} (${block.CubeSize})`, count });
+      renderTable();
+      renderAddedList();
+    }
+
+    function removeBlock(index) {
+      const item = addedBlockSummary[index];
+      const [displayName, cubeSize] = item.name.split(' (');
+      const count = item.count;
+      const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
+      if (!block) return;
+
+      block.Components.forEach(comp => {
+        totalComponents[comp.ComponentType] -= comp.ComponentCount * count;
+        if (totalComponents[comp.ComponentType] <= 0) delete totalComponents[comp.ComponentType];
+      });
+
+      addedBlockSummary.splice(index, 1);
       renderTable();
       renderAddedList();
     }
@@ -126,9 +162,13 @@
     function renderAddedList() {
       const ul = document.getElementById('addedBlocks');
       ul.innerHTML = '';
-      addedBlockSummary.forEach(text => {
+      addedBlockSummary.forEach((item, index) => {
         const li = document.createElement('li');
-        li.textContent = text;
+        li.textContent = `${item.name} × ${item.count}`;
+        const btn = document.createElement('button');
+        btn.textContent = '삭제';
+        btn.onclick = () => removeBlock(index);
+        li.appendChild(btn);
         ul.appendChild(li);
       });
     }
