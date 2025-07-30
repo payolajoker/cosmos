@@ -28,6 +28,9 @@
   <button onclick="addToTotal()">추가</button>
   <button onclick="resetTotal()">초기화</button>
 
+  <h2>추가된 블록 목록</h2>
+  <ul id="addedBlocks"></ul>
+
   <h2>누적 필요 자원</h2>
   <table id="resultTable" style="display:none;">
     <thead>
@@ -39,12 +42,12 @@
   <script>
     let blockData = [];
     let totalComponents = {};
+    let addedBlockSummary = [];
 
-    fetch('space_engineers_blocks_structured_with_groups.json')
+    fetch('space_engineers_blocks_merged.json')
       .then(res => res.json())
       .then(data => {
         blockData = data;
-        const select = document.getElementById('blockSelect');
         const groupSelect = document.getElementById('groupSelect');
 
         const groups = new Set();
@@ -70,16 +73,17 @@
       const filtered = blockData.filter(b => !group || b.TagGroup === group || b.VariantGroup === group);
       filtered.forEach(block => {
         const option = document.createElement('option');
-        option.value = block.DisplayName;
+        option.value = block.DisplayName + '||' + block.CubeSize;
         option.textContent = `${block.DisplayName} (${block.CubeSize})`;
         blockSelect.appendChild(option);
       });
     }
 
     function addToTotal() {
-      const name = document.getElementById('blockSelect').value;
+      const selected = document.getElementById('blockSelect').value;
       const count = parseInt(document.getElementById('blockCount').value);
-      const block = blockData.find(b => b.DisplayName === name);
+      const [displayName, cubeSize] = selected.split('||');
+      const block = blockData.find(b => b.DisplayName === displayName && b.CubeSize === cubeSize);
       if (!block) return;
 
       block.Components.forEach(comp => {
@@ -87,12 +91,16 @@
         totalComponents[comp.ComponentType] += comp.ComponentCount * count;
       });
 
+      addedBlockSummary.push(`${block.DisplayName} (${block.CubeSize}) × ${count}`);
       renderTable();
+      renderAddedList();
     }
 
     function resetTotal() {
       totalComponents = {};
+      addedBlockSummary = [];
       renderTable();
+      renderAddedList();
     }
 
     function renderTable() {
@@ -113,6 +121,16 @@
       });
 
       resultTable.style.display = 'table';
+    }
+
+    function renderAddedList() {
+      const ul = document.getElementById('addedBlocks');
+      ul.innerHTML = '';
+      addedBlockSummary.forEach(text => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        ul.appendChild(li);
+      });
     }
   </script>
 </body>
