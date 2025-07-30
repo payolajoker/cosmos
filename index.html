@@ -31,13 +31,21 @@
   <input type="text" id="blockSearch" placeholder="블록 이름...">
 
   <label for="blockSelect">블록 선택:</label>
-  <select id="blockSelect"></select>
+  <select id="blockSelect" onchange="renderCurrentBlockDetails()"></select>
 
   <label for="blockCount">블록 수량:</label>
-  <input type="number" id="blockCount" value="1" min="1">
+  <input type="number" id="blockCount" value="1" min="1" onchange="renderCurrentBlockDetails()">
 
   <button onclick="addToTotal()">추가</button>
   <button onclick="resetTotal()">초기화</button>
+
+  <h3>현재 선택 블록 필요 자원</h3>
+  <table id="currentBlockTable" style="display:none;">
+    <thead>
+      <tr><th>컴포넌트</th><th>수량</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <h2>추가된 블록 목록</h2>
   <ul id="addedBlocks"></ul>
@@ -96,6 +104,27 @@
         option.textContent = `${block.DisplayName} (${block.CubeSize})`;
         blockSelect.appendChild(option);
       });
+      renderCurrentBlockDetails();
+    }
+
+    function renderCurrentBlockDetails() {
+      const selected = document.getElementById('blockSelect').value;
+      const count = parseInt(document.getElementById('blockCount').value);
+      const [displayName, cubeSize] = selected.split('||');
+      const block = blockData.find(b => b.DisplayName === displayName && b.CubeSize === cubeSize);
+      const table = document.getElementById('currentBlockTable');
+      const tbody = table.querySelector('tbody');
+      tbody.innerHTML = '';
+      if (!block) {
+        table.style.display = 'none';
+        return;
+      }
+      block.Components.forEach(comp => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
+        tbody.appendChild(row);
+      });
+      table.style.display = 'table';
     }
 
     function addToTotal() {
@@ -137,6 +166,7 @@
       addedBlockSummary = [];
       renderTable();
       renderAddedList();
+      renderCurrentBlockDetails();
     }
 
     function renderTable() {
