@@ -14,6 +14,7 @@
     #addedBlocks li button { margin-left: 10px; }
     .inline-input { width: 60px; margin-left: 10px; }
     .copy-area { margin-top: 10px; }
+    .icon-img { width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; }
   </style>
 </head>
 <body>
@@ -72,7 +73,7 @@
     let totalComponents = {};
     let addedBlockSummary = [];
 
-    fetch('space_engineers_blocks_merged.json')
+    fetch('space_engineers_blocks_with_true_icons.json')
       .then(res => res.json())
       .then(data => {
         blockData = data;
@@ -116,6 +117,10 @@
       renderCurrentBlockDetails();
     }
 
+    function getIconImgTag(iconPath) {
+      return iconPath ? `<img src="${iconPath}" class="icon-img">` : '';
+    }
+
     function renderCurrentBlockDetails() {
       const selected = document.getElementById('blockSelect').value;
       const count = parseInt(document.getElementById('blockCount').value);
@@ -130,7 +135,7 @@
       }
       block.Components.forEach(comp => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
+        row.innerHTML = `<td>${getIconImgTag(comp.Icon)}${comp.ComponentType}</td><td>${comp.ComponentCount * count}</td>`;
         tbody.appendChild(row);
       });
       table.style.display = 'table';
@@ -220,8 +225,10 @@
       }
 
       keys.sort().forEach(type => {
+        const comp = blockData.flatMap(b => b.Components).find(c => c.ComponentType === type);
+        const icon = comp?.Icon || '';
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${type}</td><td>${totalComponents[type]}</td>`;
+        row.innerHTML = `<td>${getIconImgTag(icon)}${type}</td><td>${totalComponents[type]}</td>`;
         tbody.appendChild(row);
       });
 
