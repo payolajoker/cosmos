@@ -7,7 +7,9 @@
     body { font-family: Arial, sans-serif; padding: 20px; }
     h1 { font-size: 24px; }
     select, input, button { margin: 5px 5px 5px 0; padding: 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
+    th:nth-child(1), td:nth-child(1) { width: 60%; }
+    th:nth-child(2), td:nth-child(2) { width: 40%; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     #addedBlocks li button { margin-left: 10px; }
     .inline-input { width: 60px; margin-left: 10px; }
@@ -42,7 +44,7 @@
   <button onclick="resetTotal()">초기화</button>
 
   <h3>현재 선택 블록 필요 자원</h3>
-  <table id="currentBlockTable" style="display:none; width: 100%;">
+  <table id="currentBlockTable" style="display:none;">
     <thead>
       <tr><th>컴포넌트</th><th>수량</th></tr>
     </thead>
@@ -53,7 +55,7 @@
   <ul id="addedBlocks"></ul>
 
   <h2>누적 필요 자원</h2>
-  <table id="resultTable" style="display:none; width: 100%;">
+  <table id="resultTable" style="display:none;">
     <thead>
       <tr><th>컴포넌트</th><th>총 수량</th></tr>
     </thead>
@@ -182,12 +184,10 @@
       const block = blockData.find(b => b.DisplayName === displayName.trim() && b.CubeSize === cubeSize.replace(')', '').trim());
       if (!block) return;
 
-      // 조정 전 자원 차감
       block.Components.forEach(comp => {
         totalComponents[comp.ComponentType] -= comp.ComponentCount * oldCount;
       });
 
-      // 조정 후 자원 추가
       item.count = newCount;
       block.Components.forEach(comp => {
         totalComponents[comp.ComponentType] += comp.ComponentCount * newCount;
@@ -203,6 +203,9 @@
       renderTable();
       renderAddedList();
       renderCurrentBlockDetails();
+      const area = document.getElementById('copyArea');
+      area.value = '';
+      area.style.display = 'none';
     }
 
     function renderTable() {
@@ -240,15 +243,22 @@
     }
 
     function copyTotalToClipboard() {
-      const text = Object.entries(totalComponents)
+      const blockList = addedBlockSummary
+        .map(item => `${item.name} × ${item.count}`)
+        .join('\n');
+
+      const componentList = Object.entries(totalComponents)
         .map(([type, count]) => `${type}: ${count}`)
         .join('\n');
+
+      const result = `🔩 추가된 블록 목록:\n${blockList}\n\n📦 누적 자원:\n${componentList}`;
+
       const area = document.getElementById('copyArea');
-      area.value = text;
+      area.value = result;
       area.style.display = 'block';
       area.select();
       document.execCommand('copy');
-      alert('누적 자원 정보가 복사되었습니다.');
+      alert('누적 자원 정보와 블록 목록이 복사되었습니다.');
     }
   </script>
 </body>
