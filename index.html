@@ -251,7 +251,7 @@
         .map(([type, count]) => `${type}: ${count}`)
         .join('\n');
 
-      const result = `🔩 추가된 블록 목록:\n${blockList}\n\n📦 누적 자원:\n${componentList}`;
+      const result = `${blockList}\n${componentList}`;
 
       const area = document.getElementById('copyArea');
       area.value = result;
